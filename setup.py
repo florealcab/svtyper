@@ -41,6 +41,7 @@ setup(
         [console_scripts]
         svtyper=svtyper.classic:cli
         svtyper-sso=svtyper.singlesample:cli
+        svtyper-pms=svtyper.parallelsample:cli
     ''',
     packages=find_packages(exclude=('tests', 'etc')),
     include_package_data=True,

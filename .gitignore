@@ -38,3 +38,8 @@
 Icon?
 ehthumbs.db
 Thumbs.db
+
+# Python compiled files #
+#########################
+**__pycache__
+**.pyc
