@@ -23,7 +23,7 @@ setup(
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
     install_requires=[
-        'pysam>=0.12.0',
+        'pysam>=0.11.2.2',
         'numpy',
         'scipy',
         'cytoolz>=0.8.2',
