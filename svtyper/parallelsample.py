@@ -79,6 +79,7 @@ def genotype_multiple_samples(bamlist, vcf_in, vcf_out, cores=1):
         tmp_dir = tempfile.mkdtemp()
     else:
         tmp_dir = os.path.join(os.path.dirname(vcf_out), "tmp" + random_string())
+        os.mkdir(tmp_dir)
 
     if vcf_in == sys.stdin:
         vcf_in = single.dump_piped_vcf_to_file(vcf_in, tmp_dir)
