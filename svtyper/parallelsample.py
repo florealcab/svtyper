@@ -10,6 +10,8 @@ import os
 import multiprocessing
 from functools import partial
 from subprocess import call
+import random
+import string
 
 
 from pysam import AlignmentFile, tabix_compress, tabix_index
@@ -65,35 +67,32 @@ def get_bamfiles(bamlist):
     return bamfiles
 
 
+def random_string(length=10):
+    return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(length))
+
+
 def genotype_multiple_samples(bamlist, vcf_in, vcf_out, cores=1):
 
     bamfiles = get_bamfiles(bamlist)
 
-    tmp_files = []
-
     if vcf_out == sys.stdout:
-        out_dir = tempfile.mkdtemp()
-        tmp_files.append(out_dir)
+        tmp_dir = tempfile.mkdtemp()
     else:
-        out_dir = os.path.dirname(vcf_out)
+        tmp_dir = os.path.join(os.path.dirname(vcf_out), "tmp" + random_string())
 
     if vcf_in == sys.stdin:
-        vcf_in = single.dump_piped_vcf_to_file(vcf_in, out_dir)
-        tmp_files.append(vcf_in)
+        vcf_in = single.dump_piped_vcf_to_file(vcf_in, tmp_dir)
     elif vcf_in.endswith(".gz"):
         vcf_in_gz = vcf_in
-        vcf_in = vcf_in[:-3]
-        with gzip.open(vcf_in_gz, 'rb') as f_in:
-            with open(vcf_in, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-        tmp_files.append(vcf_in)
+        vcf_in = os.path.join(tmp_dir, os.path.basename(vcf_in[:-3]))
+        with gzip.open(vcf_in_gz, 'rb') as f_in, open(vcf_in, 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
 
     pool = multiprocessing.Pool(processes=cores)
     launch_ind = partial(genotype_single_sample,
-                         vcf_in=vcf_in, out_dir=out_dir)
+                         vcf_in=vcf_in, out_dir=tmp_dir)
 
     vcf_files = pool.map(launch_ind, bamfiles)
-    tmp_files += vcf_files
 
     merge_cmd = "bcftools merge -m id "
 
@@ -108,17 +107,7 @@ def genotype_multiple_samples(bamlist, vcf_in, vcf_out, cores=1):
         if vcf_out != sys.stdout:
             tabix_index(vcf_out, force=True, preset="vcf")
 
-        for tmp_file in tmp_files:
-            if os.path.isdir(tmp_file):
-                shutil.rmtree(tmp_file)
-            elif os.path.exists(tmp_file):
-                os.remove(tmp_file)
-                if tmp_file.endswith(".gz"):
-                    if os.path.exists(tmp_file[:-3]):
-                        os.remove(tmp_file[:-3])
-                    tbi = tmp_file + ".tbi"
-                    if os.path.exists(tbi):
-                        os.remove(tbi)
+        shutil.rmtree(tmp_dir)
     else:
         print("Failed: bcftools merge exits with status %d" % exit_code)
         exit(1)
